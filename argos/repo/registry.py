@@ -42,6 +42,9 @@ ICON_COLOR_PILLOW = '#FF40FF'
 ICON_COLOR_SCIPY = ICON_COLOR_NUMPY
 ICON_COLOR_JSON = '#880088'
 
+#TODO: choose a different color
+ICON_COLOR_ASTROPY = ICON_COLOR_NUMPY
+
 
 
 class RtiRegItem(BaseRegItem):
@@ -252,6 +255,11 @@ class RtiRegistry(BaseRegistry):
                        'argos.repo.rtiplugins.jsonio.JsonFileRti',
                        iconColor=ICON_COLOR_JSON,
                        globs='*.json'),
+
+            RtiRegItem('FITS file',
+                       'argos.repo.rtiplugins.fitsio.FITSFileRti',
+                       iconColor=ICON_COLOR_ASTROPY,
+                       globs='*.fits')
         ]
 
 
