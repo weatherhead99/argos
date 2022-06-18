@@ -10,7 +10,7 @@ import logging
 from astropy.io import fits
 from typing import Optional, Union, List
 
-from argos.repo.baserti import BaseRti
+from argos.repo.baserti import BaseRti, shapeToSummary
 from argos.repo.iconfactory import RtiIconFactory, ICON_COLOR_UNDEF
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class FITSExtensionRti(BaseRti):
     """ Repository Tree Item (RTI) representing a FITS extension """
 
     _defaultIconGlyph = RtiIconFactory.ARRAY
-    
+
     def __init__(self, hdu, nodeName, fileName="", iconColor=ICON_COLOR_UNDEF):
         super().__init__(nodeName=nodeName,  iconColor=iconColor, fileName=fileName)
         self._hdu: Optional[EXTENSION_TYPES] = hdu
@@ -37,23 +37,42 @@ class FITSExtensionRti(BaseRti):
             return dict(self._hdu.header)
         return {}
 
+    @property
+    def arrayShape(self):
+        if self._hdu.data is not None:
+            return self._hdu.data.shape
+        return tuple()
+
+    @property
+    def summary(self):
+        return shapeToSummary(self.arrayShape)
 
     def hasChildren(self) -> bool:
         return False
 
     def __getitem__(self, index):
-        return self._hdu.data.__getitem__(index)
+        if self._hdu.data is not None:
+            return self._hdu.data.__getitem__(index)
 
-class FITSImageExtensionRti(FITSExtensionRti): ...
+    @property
+    def nDims(self):
+        return 1
+
+
+    
+class FITSImageExtensionRti(FITSExtensionRti):
+    @property
+    def isSliceable(self):
+        return True
 
 class FITSTableExtensionRti(FITSExtensionRti): ...
 
 
     
 def constructExtensionRti(hdu: EXTENSION_TYPES, *args, **kwargs):
-    if isinstance(hdu, Union[fits.ImageHDU, fits.CompImageHDU]):
-        return FITSImageExtensionRti(hdu, *args **kwargs)
-    elif isinstance(hdu, Union[fits.TableHDU, fits.BinTableHDU]):
+    if any(isinstance(hdu, _) for _ in [fits.ImageHDU, fits.CompImageHDU]):
+        return FITSImageExtensionRti(hdu, *args, **kwargs)
+    elif any(isinstance(hdu, _) for _ in [fits.TableHDU, fits.BinTableHDU]):
         return FITSTableExtensionRti(hdu, *args, **kwargs)
 
     
@@ -88,9 +107,10 @@ class FITSFileRti(FITSExtensionRti):
 
         for hdu in self._hdul[1:]:
             nm = hdu.name
-            children.append(FITSExtensionRti(hdu, nodeName=nm, fileName=self._fileName,
-                                             iconColor=ICON_COLOR_UNDEF))
-
+            logger.debug(hdu)
+            ext = constructExtensionRti(hdu, nodeName=nm, fileName=self._fileName,
+                                        iconColor=ICON_COLOR_UNDEF)
+            children.append(ext)
         return children
 
 
